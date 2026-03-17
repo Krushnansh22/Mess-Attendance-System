@@ -478,6 +478,53 @@ async def admin_users(admin: dict = Depends(get_admin_user)):
     return {"status": "success", "count": len(safe), "users": safe}
 
 
+@app.post("/admin/qr/generate")
+async def admin_generate_qr(admin: dict = Depends(get_admin_user), background_tasks: BackgroundTasks = BackgroundTasks()):
+    global MESS_QR_SECRET_KEY
+    new_qr_payload = str(uuid.uuid4())
+    
+    # 1. Update in-memory
+    MESS_QR_SECRET_KEY = new_qr_payload
+    
+    # 2. Update .env (persist)
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+        
+        with open(env_path, "w") as f:
+            for line in lines:
+                if line.startswith("MESS_QR_SECRET_KEY="):
+                    f.write(f"MESS_QR_SECRET_KEY={new_qr_payload}\n")
+                else:
+                    f.write(line)
+                    
+    # 3. Log into Sheets
+    background_tasks.add_task(
+        retry_with_backoff,
+        lambda: sheets_client.append_qr_code({
+            "timestamp": now_ist().isoformat(),
+            "admin_id": admin["sub"],
+            "payload": new_qr_payload,
+        })
+    )
+    
+    # 4. Also add an audit log
+    background_tasks.add_task(
+        retry_with_backoff,
+        lambda: sheets_client.append_audit({
+            "timestamp": now_ist().isoformat(),
+            "user_id": admin["sub"],
+            "action": "ADMIN_GENERATE_QR",
+            "metadata": json.dumps({
+                "payload": new_qr_payload,
+            }),
+        })
+    )
+    
+    return {"status": "success", "payload": new_qr_payload, "message": "New QR code generated and saved."}
+
+
 # ── Health ─────────────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():

@@ -4,17 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#1a6b3a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mess Attendance" />
   <link rel="manifest" href="/static/manifest.json" />
-  <link rel="icon" href="/static/icons/icon-192.png" />
   <title>Mess Attendance</title>
 
   <!-- html5-qrcode from CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
-    integrity="sha512-r6rDA7W6ZeQhvl8S09FfWBJpBtFIH9gRzE0bCRbd7lHSNZfNJgfcnHJRiOU9+VMaIOQk9oQvJMCIpHkkVJnKA=="
-    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    
+  <!-- qrcode.js for QR code generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     /* ── Reset & Base ───────────────────────────────────────────────────── */
@@ -270,13 +270,19 @@
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #f0f7f3; }
 
-    .admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
     .admin-tab {
-      padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
-      background: var(--card); cursor: pointer; font-size: .85rem; font-weight: 600;
+      padding: 8px 16px; border-radius: 20px; border: none; background: transparent;
+      cursor: pointer; font-size: .95rem; font-weight: 700;
       transition: all var(--transition); color: var(--text-muted);
     }
-    .admin-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .admin-tab:hover { color: var(--primary); }
+    .admin-tab.active { background: var(--primary); color: #fff; box-shadow: var(--shadow); }
+    
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+    .qr-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; }
+    .qr-container img { border-radius: 8px; box-shadow: var(--shadow); border: 12px solid #fff; max-width: 100%; height: auto; }
 
     /* ── Profile / Logout ─────────────────────────────────────────────── */
     .profile-header {
@@ -471,57 +477,80 @@
   <!-- ── ADMIN SCREEN ── -->
   <div id="screen-admin" class="screen">
     <div class="page-content">
-      <!-- Top-up form -->
-      <div class="card">
-        <p class="card-title">💳 Token Top-Up</p>
-        <div id="topup-alert"></div>
-        <div class="form-group">
-          <label>Student Email</label>
-          <input type="email" id="topup-email" placeholder="student@institution.edu" />
-        </div>
-        <div class="form-group">
-          <label>Tokens to Add</label>
-          <input type="number" id="topup-tokens" placeholder="e.g. 90" min="1" />
-        </div>
-        <div class="form-group">
-          <label>Plan (optional)</label>
-          <select id="topup-plan">
-            <option value="">— Keep existing —</option>
-            <option value="monthly">Monthly (90 tokens)</option>
-            <option value="weekly">Weekly (21 tokens)</option>
-            <option value="pay-as-you-go">Pay-as-you-go</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" id="topup-btn" onclick="handleTopup()">
-          Add Tokens
-        </button>
+      
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('controls')">Controls</button>
+        <button class="admin-tab" onclick="switchAdminTab('attendance')">Attendance</button>
+        <button class="admin-tab" onclick="switchAdminTab('users')">Users</button>
+        <button class="admin-tab" onclick="switchAdminTab('audit')">Audit Log</button>
       </div>
 
-      <!-- Data tabs -->
-      <div class="card">
-        <div class="admin-tabs">
-          <button class="admin-tab active" onclick="switchAdminTab('attendance')">Attendance</button>
-          <button class="admin-tab" onclick="switchAdminTab('users')">Users</button>
-          <button class="admin-tab" onclick="switchAdminTab('audit')">Audit Log</button>
+      <!-- Controls Panel -->
+      <div id="admin-panel-controls" class="admin-panel active">
+        <!-- Top-up form -->
+        <div class="card mb-3" style="margin-bottom: 16px;">
+          <p class="card-title">💳 Token Top-Up</p>
+          <div id="topup-alert"></div>
+          <div class="form-group">
+            <label>Student Email</label>
+            <input type="email" id="topup-email" placeholder="student@institution.edu" />
+          </div>
+          <div class="form-group">
+            <label>Tokens to Add</label>
+            <input type="number" id="topup-tokens" placeholder="e.g. 90" min="1" />
+          </div>
+          <div class="form-group">
+            <label>Plan (optional)</label>
+            <select id="topup-plan">
+              <option value="">— Keep existing —</option>
+              <option value="monthly">Monthly (90 tokens)</option>
+              <option value="weekly">Weekly (21 tokens)</option>
+              <option value="pay-as-you-go">Pay-as-you-go</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="topup-btn" onclick="handleTopup()">
+            Add Tokens
+          </button>
         </div>
 
-        <!-- Date filters for attendance -->
-        <div id="admin-attend-filters" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-          <div style="flex:1">
-            <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">FROM</label>
-            <input type="date" id="filter-from" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
+        <!-- QR Generation Generator -->
+        <div class="card">
+          <p class="card-title">🔲 Generate New QR Code</p>
+          <p class="text-muted" style="margin-bottom: 12px">Invalidates the old QR code. Place the newly generated QR code at the mess entrance.</p>
+          <div id="qr-alert"></div>
+          <button class="btn btn-primary" id="generate-qr-btn" onclick="handleGenerateQR()">
+            Generate QR
+          </button>
+          <div class="qr-container" id="qr-display-area" style="display:none">
+            <div id="qrcode"></div>
+            <p class="text-muted" style="font-size:0.75rem; word-break: break-all;" id="qr-payload-text"></p>
+            <button class="btn btn-outline" onclick="downloadQR()">📥 Download QR</button>
           </div>
-          <div style="flex:1">
-            <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">TO</label>
-            <input type="date" id="filter-to" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
-          </div>
-          <button class="btn btn-outline btn-sm" style="align-self:flex-end" onclick="loadAdminAttendance()">Filter</button>
-        </div>
-
-        <div id="admin-table-area">
-          <div class="skeleton"></div><div class="skeleton mt-2"></div>
         </div>
       </div>
+
+      <!-- Data Panel (Attendance, Users, Audit) -->
+      <div id="admin-panel-data" class="admin-panel">
+        <div class="card">
+          <!-- Date filters for attendance -->
+          <div id="admin-attend-filters" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <div style="flex:1">
+              <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">FROM</label>
+              <input type="date" id="filter-from" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
+            </div>
+            <div style="flex:1">
+              <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">TO</label>
+              <input type="date" id="filter-to" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
+            </div>
+            <button class="btn btn-outline btn-sm" style="align-self:flex-end" onclick="loadAdminAttendance()">Filter</button>
+          </div>
+
+          <div id="admin-table-area">
+            <div class="skeleton"></div><div class="skeleton mt-2"></div>
+          </div>
+        </div>
+      </div>
+      
     </div>
   </div>
 
@@ -575,7 +604,8 @@ let currentUser = null;
 let authToken   = null;
 let scanner     = null;
 let scannerActive = false;
-let currentAdminTab = 'attendance';
+let currentAdminTab = 'controls';
+let qrcodeObj = null;
 
 // ── Persisted session ──────────────────────────────────────────────────────
 function saveSession(user, token) {
@@ -778,26 +808,41 @@ function startScanner() {
   scanner = new Html5Qrcode('qr-reader');
   scannerActive = true;
 
-  Html5Qrcode.getCameras().then(cameras => {
-    if (!cameras || cameras.length === 0) {
-      showScanError('No camera found on this device.');
-      resetScannerUI();
-      return;
-    }
-    // Prefer back camera
-    const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+  // Use facingMode: "environment" for back camera by default which doesn't require pre-asking device IDs and is robust
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+    onQRScanSuccess,
+    () => {}  // error callback (per-frame, suppress)
+  ).catch(err => {
+    // If environment camera fails (e.g., on a desktop/laptop without a back camera), fallback to the front/user camera
     scanner.start(
-      cam.id,
+      { facingMode: "user" },
       { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
       onQRScanSuccess,
-      () => {}  // error callback (per-frame, suppress)
-    ).catch(err => {
-      showScanError('Camera access denied. Please allow camera permission and retry.');
-      resetScannerUI();
+      () => {}
+    ).catch(err2 => {
+      // If that also fails, get whatever camera is available and use it
+      Html5Qrcode.getCameras().then(cameras => {
+        if (!cameras || cameras.length === 0) {
+          showScanError('No camera found on this device.');
+          resetScannerUI();
+          return;
+        }
+        scanner.start(
+          cameras[0].id,
+          { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+          onQRScanSuccess,
+          () => {}
+        ).catch(err3 => {
+          showScanError('Camera access denied. Please allow camera permission and retry.');
+          resetScannerUI();
+        });
+      }).catch(() => {
+        showScanError('Unable to access camera. Ensure you are allowing permissions and utilizing HTTPS.');
+        resetScannerUI();
+      });
     });
-  }).catch(() => {
-    showScanError('Unable to access camera. Ensure you are using HTTPS.');
-    resetScannerUI();
   });
 }
 
@@ -981,12 +1026,20 @@ function updateProfileScreen() {
 // ── Admin ────────────────────────────────────────────────────────────────────
 function switchAdminTab(tab) {
   currentAdminTab = tab;
-  document.querySelectorAll('.admin-tab').forEach((btn, i) => {
+  document.querySelectorAll('.admin-tab').forEach((btn) => {
     btn.classList.toggle('active', btn.textContent.toLowerCase().startsWith(tab));
   });
-  const filters = document.getElementById('admin-attend-filters');
-  if (filters) filters.style.display = tab === 'attendance' ? 'flex' : 'none';
-  loadAdminData();
+
+  if (tab === 'controls') {
+    document.getElementById('admin-panel-controls').classList.add('active');
+    document.getElementById('admin-panel-data').classList.remove('active');
+  } else {
+    document.getElementById('admin-panel-controls').classList.remove('active');
+    document.getElementById('admin-panel-data').classList.add('active');
+    const filters = document.getElementById('admin-attend-filters');
+    if (filters) filters.style.display = tab === 'attendance' ? 'flex' : 'none';
+    loadAdminData();
+  }
 }
 
 async function loadAdminData() {
@@ -1112,6 +1165,52 @@ async function handleTopup() {
     btn.disabled = false;
     btn.textContent = 'Add Tokens';
   }
+}
+
+async function handleGenerateQR() {
+  clearAlert('qr-alert');
+  const btn = document.getElementById('generate-qr-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating...';
+
+  try {
+    const data = await api('POST', '/admin/qr/generate');
+    showAlert('qr-alert', 'success', `✅ ${data.message}`);
+    
+    // Clear and Redraw the QR Code
+    document.getElementById('qr-display-area').style.display = 'flex';
+    document.getElementById('qr-payload-text').innerText = "Payload ID: " + data.payload;
+    const qrContainer = document.getElementById('qrcode');
+    qrContainer.innerHTML = ''; // clear old
+    if (qrcodeObj) { qrcodeObj.clear(); }
+    
+    qrcodeObj = new QRCode(qrContainer, {
+      text: data.payload,
+      width: 256,
+      height: 256,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+
+  } catch (err) {
+    showAlert('qr-alert', 'error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate QR';
+  }
+}
+
+function downloadQR() {
+  const qrCanvas = document.querySelector('#qrcode canvas');
+  if (!qrCanvas) return showAlert('qr-alert', 'error', 'No QR code generated yet to download.');
+  
+  const link = document.createElement('a');
+  link.download = `mess-qr-${new Date().toISOString().split('T')[0]}.png`;
+  link.href = qrCanvas.toDataURL("image/png");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // ── Enter key support ────────────────────────────────────────────────────────

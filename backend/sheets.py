@@ -5,6 +5,7 @@ Sheet structure (all in one Google Sheets document):
   Sheet 1: Users      — id, name, email, password_hash, tokens_remaining, plan, is_admin, created_at
   Sheet 2: Attendance — date, timestamp, user_id, user_name, meal_type
   Sheet 3: Audit      — timestamp, user_id, action, metadata
+  Sheet 4: QRCodes    — timestamp, admin_id, payload
 """
 
 import os
@@ -28,6 +29,7 @@ SCOPES = [
 USERS_HEADERS    = ["id", "name", "email", "password_hash", "tokens_remaining", "plan", "is_admin", "created_at"]
 ATTEND_HEADERS   = ["date", "timestamp", "user_id", "user_name", "meal_type"]
 AUDIT_HEADERS    = ["timestamp", "user_id", "action", "metadata"]
+QR_HEADERS       = ["timestamp", "admin_id", "payload"]
 
 
 class SheetError(Exception):
@@ -49,6 +51,7 @@ class SheetsClient:
         self._users_ws: Optional[gspread.Worksheet] = None
         self._attend_ws: Optional[gspread.Worksheet] = None
         self._audit_ws: Optional[gspread.Worksheet] = None
+        self._qr_ws: Optional[gspread.Worksheet] = None
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     async def init(self):
@@ -94,6 +97,7 @@ class SheetsClient:
         self._users_ws  = self._ensure_worksheet("Users",      USERS_HEADERS)
         self._attend_ws = self._ensure_worksheet("Attendance", ATTEND_HEADERS)
         self._audit_ws  = self._ensure_worksheet("Audit",      AUDIT_HEADERS)
+        self._qr_ws     = self._ensure_worksheet("QRCodes",    QR_HEADERS)
 
     def _ensure_worksheet(self, title: str, headers: list[str]) -> gspread.Worksheet:
         try:
@@ -246,3 +250,9 @@ class SheetsClient:
             return []
         headers = all_rows[0]
         return [_row_to_dict(headers, row) for row in all_rows[1:] if any(row)]
+
+    # ── QR Codes ───────────────────────────────────────────────────────────────
+
+    async def append_qr_code(self, record: dict):
+        row = [record.get(h, "") for h in QR_HEADERS]
+        await self._run(self._qr_ws.append_row, row, value_input_option="RAW")
