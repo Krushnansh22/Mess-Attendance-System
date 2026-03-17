@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+dynamic-sanctum-464410-j7-9be0220c8dca.json
+
 # Distribution / packaging
 .Python
 build/

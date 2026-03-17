@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a6b3a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mess Attendance" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="icon" href="/static/icons/icon-192.png" />
+  <title>Mess Attendance</title>
+
+  <!-- html5-qrcode from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
+    integrity="sha512-r6rDA7W6ZeQhvl8S09FfWBJpBtFIH9gRzE0bCRbd7lHSNZfNJgfcnHJRiOU9+VMaIOQk9oQvJMCIpHkkVJnKA=="
+    crossorigin="anonymous"></script>
+
+  <style>
+    /* ── Reset & Base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #1a6b3a;
+      --primary-light: #2a8f50;
+      --primary-dark: #114d29;
+      --danger: #c0392b;
+      --warning: #e67e22;
+      --success: #27ae60;
+      --info: #2980b9;
+      --bg: #f4f6f5;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --border: #e0e5e2;
+      --radius: 14px;
+      --shadow: 0 2px 12px rgba(0,0,0,.08);
+      --transition: .2s ease;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App Shell ──────────────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Screens ────────────────────────────────────────────────────────── */
+    .screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      padding: 0 0 80px;
+      animation: fadeIn .2s ease;
+    }
+    .screen.active { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* ── Top App Bar ────────────────────────────────────────────────────── */
+    .app-bar {
+      background: var(--primary);
+      color: #fff;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .app-bar h1 { font-size: 1.1rem; font-weight: 600; flex: 1; }
+    .app-bar .menu-btn {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: 1.4rem; padding: 4px; border-radius: 8px;
+      transition: background var(--transition);
+    }
+    .app-bar .menu-btn:hover { background: rgba(255,255,255,.15); }
+
+    /* ── Bottom Nav ─────────────────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 4px 12px;
+      cursor: pointer; background: none; border: none;
+      font-size: .7rem; color: var(--text-muted);
+      transition: color var(--transition);
+    }
+    .nav-item .icon { font-size: 1.4rem; margin-bottom: 2px; }
+    .nav-item.active { color: var(--primary); font-weight: 600; }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 1rem; font-weight: 700; margin-bottom: 12px;
+      color: var(--primary);
+    }
+
+    /* ── Forms ──────────────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: .8rem; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: .95rem; background: var(--bg);
+      color: var(--text); transition: border-color var(--transition);
+      appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: var(--primary);
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 22px; border-radius: 10px; border: none;
+      font-size: .95rem; font-weight: 600; cursor: pointer;
+      transition: all var(--transition); width: 100%;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { background: #9dc8ad; cursor: not-allowed; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+    .btn-sm { padding: 8px 14px; font-size: .85rem; width: auto; }
+
+    /* ── Alerts ─────────────────────────────────────────────────────────── */
+    .alert {
+      padding: 13px 16px; border-radius: 10px; font-size: .9rem;
+      margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px;
+    }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-error   { background: #f8d7da; color: #721c24; }
+    .alert-info    { background: #d1ecf1; color: #0c5460; }
+    .alert-warning { background: #fff3cd; color: #856404; }
+    .alert .icon   { font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ── Page content wrapper ─────────────────────────────────────────────── */
+    .page-content { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Auth Screens ──────────────────────────────────────────────────── */
+    #screen-auth {
+      background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 60%, #2a8f50 100%);
+      justify-content: center; align-items: center; padding: 24px;
+      min-height: 100vh;
+    }
+    .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo .logo-icon { font-size: 3.5rem; }
+    .auth-logo h2 { color: #fff; font-size: 1.5rem; margin-top: 8px; }
+    .auth-logo p { color: rgba(255,255,255,.75); font-size: .9rem; margin-top: 4px; }
+    .auth-card { background: #fff; border-radius: 20px; padding: 28px; width: 100%; max-width: 400px; }
+    .auth-tabs { display: flex; margin-bottom: 22px; border-bottom: 2px solid var(--border); }
+    .auth-tab {
+      flex: 1; padding: 10px; text-align: center; background: none; border: none;
+      font-size: .95rem; color: var(--text-muted); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      transition: all var(--transition);
+    }
+    .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+    .auth-footer { text-align: center; margin-top: 14px; font-size: .8rem; color: var(--text-muted); }
+
+    /* ── Scan Screen ─────────────────────────────────────────────────────── */
+    .meal-banner {
+      padding: 14px 20px;
+      border-radius: 0 0 var(--radius) var(--radius);
+      text-align: center; font-weight: 700; font-size: 1rem;
+    }
+    .meal-banner.active { background: var(--success); color: #fff; }
+    .meal-banner.inactive { background: #f1f1f1; color: var(--text-muted); }
+
+    #qr-reader {
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    /* Override html5-qrcode inline styles */
+    #qr-reader video { width: 100% !important; }
+    #qr-reader__scan_region { min-height: 240px !important; background: #000; }
+
+    .scan-result {
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      animation: popIn .3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popIn { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .scan-result .big-icon { font-size: 4rem; margin-bottom: 12px; }
+    .scan-result h2 { font-size: 1.3rem; margin-bottom: 8px; }
+    .scan-result p { color: var(--text-muted); font-size: .9rem; }
+    .scan-result.success { background: #d4edda; }
+    .scan-result.error   { background: #f8d7da; }
+    .token-badge {
+      display: inline-block; background: var(--primary); color: #fff;
+      padding: 4px 12px; border-radius: 20px; font-size: .85rem;
+      font-weight: 700; margin-top: 10px;
+    }
+
+    /* ── History Screen ───────────────────────────────────────────────── */
+    .meal-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700;
+    }
+    .meal-chip.breakfast { background: #fff3cd; color: #856404; }
+    .meal-chip.lunch     { background: #d4edda; color: #155724; }
+    .meal-chip.dinner    { background: #d1ecf1; color: #0c5460; }
+
+    .record-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .record-item:last-child { border-bottom: none; }
+    .record-date { font-size: .85rem; color: var(--text-muted); margin-top: 3px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card {
+      background: var(--card); border-radius: 12px; padding: 16px;
+      text-align: center; box-shadow: var(--shadow);
+    }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+    .stat-lbl { font-size: .7rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; text-transform: uppercase; }
+
+    /* ── Token Screen ────────────────────────────────────────────────── */
+    .token-display {
+      text-align: center; padding: 28px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-radius: var(--radius); color: #fff;
+    }
+    .token-count { font-size: 3.5rem; font-weight: 900; }
+    .token-label { font-size: .9rem; opacity: .85; margin-top: 4px; }
+    .token-plan  {
+      display: inline-block; background: rgba(255,255,255,.2);
+      padding: 4px 14px; border-radius: 20px; margin-top: 10px; font-size: .85rem;
+    }
+
+    /* ── Admin Screen ─────────────────────────────────────────────────── */
+    .admin-table-wrap { overflow-x: auto; border-radius: var(--radius); }
+    table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+    th {
+      background: var(--primary); color: #fff; text-align: left;
+      padding: 10px 12px; font-weight: 700; white-space: nowrap;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f0f7f3; }
+
+    .admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .admin-tab {
+      padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+      background: var(--card); cursor: pointer; font-size: .85rem; font-weight: 600;
+      transition: all var(--transition); color: var(--text-muted);
+    }
+    .admin-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* ── Profile / Logout ─────────────────────────────────────────────── */
+    .profile-header {
+      text-align: center; padding: 28px 20px;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      border-radius: 0 0 28px 28px; margin-bottom: -12px;
+    }
+    .avatar {
+      width: 72px; height: 72px; background: rgba(255,255,255,.2);
+      border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 2rem; margin-bottom: 12px; color: #fff;
+    }
+    .profile-name { color: #fff; font-size: 1.2rem; font-weight: 700; }
+    .profile-email { color: rgba(255,255,255,.75); font-size: .85rem; margin-top: 4px; }
+
+    /* ── Loading spinner ─────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    .spinner-dark {
+      border-color: rgba(0,0,0,.15); border-top-color: var(--primary);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Skeleton loader ─────────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #e0e0e0 25%, #f5f5f5 50%, #e0e0e0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px; height: 18px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: .9rem; }
+
+    /* ── Utility ─────────────────────────────────────────────────────── */
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .text-center { text-align: center; }
+    .text-muted   { color: var(--text-muted); font-size: .85rem; }
+    .fw-bold { font-weight: 700; }
+
+    /* ── Admin badge ─────────────────────────────────────────────────── */
+    .badge-admin {
+      background: #ffd700; color: #333; padding: 2px 8px;
+      border-radius: 10px; font-size: .7rem; font-weight: 800;
+      vertical-align: middle; margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════ AUTH SCREEN ═══════════ -->
+  <div id="screen-auth" class="screen active">
+    <div class="auth-logo">
+      <div class="logo-icon">🍽️</div>
+      <h2>Mess Attendance</h2>
+      <p>Static QR Edition</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <!-- Login form -->
+      <div id="auth-login" class="auth-form active">
+        <div id="login-alert"></div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@institution.edu" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">
+          Login
+        </button>
+      </div>
+
+      <!-- Register form -->
+      <div id="auth-register" class="auth-form">
+        <div id="register-alert"></div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="reg-name" placeholder="Rahul Sharma" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="you@institution.edu" autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="Min. 6 characters" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label>Admin Passcode <span style="color:#999;font-weight:400">(optional)</span></label>
+          <input type="password" id="reg-admin" placeholder="Leave blank for student account" />
+        </div>
+        <button class="btn btn-primary" id="register-btn" onclick="handleRegister()">
+          Create Account
+        </button>
+      </div>
+
+      <div class="auth-footer">Scan the QR code at the mess to mark your attendance</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN APP (post-login) ═══════════ -->
+  <!-- App Bar -->
+  <div id="main-app-bar" class="app-bar" style="display:none">
+    <div class="logo-icon" style="font-size:1.5rem">🍽️</div>
+    <h1 id="app-bar-title">Mess Attendance</h1>
+    <button class="menu-btn" onclick="showScreen('profile')" title="Profile">👤</button>
+  </div>
+
+  <!-- ── SCAN SCREEN ── -->
+  <div id="screen-scan" class="screen">
+    <div id="meal-banner" class="meal-banner inactive">Checking meal window...</div>
+    <div class="page-content">
+      <div id="scan-area">
+        <div class="card">
+          <p class="card-title">📷 Scan QR Code</p>
+          <p class="text-muted mt-2">Point your camera at the QR code posted at the mess entrance.</p>
+          <div class="mt-4" id="qr-reader"></div>
+          <div id="scan-error" style="display:none"></div>
+          <button class="btn btn-primary mt-4" id="start-scan-btn" onclick="startScanner()">
+            Start Camera
+          </button>
+          <button class="btn btn-outline mt-2" id="stop-scan-btn" onclick="stopScanner()" style="display:none">
+            Stop Camera
+          </button>
+        </div>
+      </div>
+
+      <!-- Result overlay (shown after scan) -->
+      <div id="scan-result-area" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── HISTORY SCREEN ── -->
+  <div id="screen-history" class="screen">
+    <div class="page-content">
+      <div class="stats-grid" id="history-stats">
+        <div class="stat-card"><div class="skeleton" style="height:32px"></div><div class="stat-lbl">Breakfast</div></div>
+        <div class="stat-card"><div class="skeleton" style="height:32px"></div><div class="stat-lbl">Lunch</div></div>
+        <div class="stat-card"><div class="skeleton" style="height:32px"></div><div class="stat-lbl">Dinner</div></div>
+      </div>
+      <div class="card">
+        <p class="card-title">📋 Attendance History</p>
+        <div id="history-list"><div class="skeleton mt-2"></div><div class="skeleton mt-2"></div><div class="skeleton mt-2"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOKENS SCREEN ── -->
+  <div id="screen-tokens" class="screen">
+    <div class="page-content">
+      <div id="token-card">
+        <div class="token-display">
+          <div class="token-count" id="tok-count">—</div>
+          <div class="token-label">Tokens Remaining</div>
+          <div class="token-plan" id="tok-plan">—</div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="card-title">ℹ️ About Tokens</p>
+        <p class="text-muted" style="font-size:.85rem;line-height:1.6">
+          Each successful scan deducts 1 token from your balance.
+          Contact the mess administrator to top up your tokens.
+        </p>
+        <div class="mt-3" style="font-size:.85rem;line-height:1.8;color:var(--text-muted)">
+          <div>📦 <strong>Monthly plan:</strong> 90 tokens/month</div>
+          <div>📅 <strong>Weekly plan:</strong> 21 tokens/week</div>
+          <div>💳 <strong>Pay-as-you-go:</strong> Top up manually</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADMIN SCREEN ── -->
+  <div id="screen-admin" class="screen">
+    <div class="page-content">
+      <!-- Top-up form -->
+      <div class="card">
+        <p class="card-title">💳 Token Top-Up</p>
+        <div id="topup-alert"></div>
+        <div class="form-group">
+          <label>Student Email</label>
+          <input type="email" id="topup-email" placeholder="student@institution.edu" />
+        </div>
+        <div class="form-group">
+          <label>Tokens to Add</label>
+          <input type="number" id="topup-tokens" placeholder="e.g. 90" min="1" />
+        </div>
+        <div class="form-group">
+          <label>Plan (optional)</label>
+          <select id="topup-plan">
+            <option value="">— Keep existing —</option>
+            <option value="monthly">Monthly (90 tokens)</option>
+            <option value="weekly">Weekly (21 tokens)</option>
+            <option value="pay-as-you-go">Pay-as-you-go</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="topup-btn" onclick="handleTopup()">
+          Add Tokens
+        </button>
+      </div>
+
+      <!-- Data tabs -->
+      <div class="card">
+        <div class="admin-tabs">
+          <button class="admin-tab active" onclick="switchAdminTab('attendance')">Attendance</button>
+          <button class="admin-tab" onclick="switchAdminTab('users')">Users</button>
+          <button class="admin-tab" onclick="switchAdminTab('audit')">Audit Log</button>
+        </div>
+
+        <!-- Date filters for attendance -->
+        <div id="admin-attend-filters" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="flex:1">
+            <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">FROM</label>
+            <input type="date" id="filter-from" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
+          </div>
+          <div style="flex:1">
+            <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">TO</label>
+            <input type="date" id="filter-to" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem" />
+          </div>
+          <button class="btn btn-outline btn-sm" style="align-self:flex-end" onclick="loadAdminAttendance()">Filter</button>
+        </div>
+
+        <div id="admin-table-area">
+          <div class="skeleton"></div><div class="skeleton mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE SCREEN ── -->
+  <div id="screen-profile" class="screen">
+    <div class="profile-header">
+      <div class="avatar">👤</div>
+      <div class="profile-name" id="profile-name">—</div>
+      <div class="profile-email" id="profile-email">—</div>
+    </div>
+    <div class="page-content" style="margin-top:28px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span class="card-title" style="margin:0">Account</span>
+          <span id="profile-admin-badge" style="display:none" class="badge-admin">ADMIN</span>
+        </div>
+        <div style="font-size:.85rem;line-height:1.9;color:var(--text-muted)">
+          <div>🪙 Tokens remaining: <strong id="profile-tokens">—</strong></div>
+          <div>📦 Plan: <strong id="profile-plan">—</strong></div>
+        </div>
+      </div>
+      <button class="btn btn-danger" onclick="handleLogout()">
+        🚪 Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav id="bottom-nav" class="bottom-nav" style="display:none">
+    <button class="nav-item active" id="nav-scan" onclick="showScreen('scan')">
+      <span class="icon">📷</span>Scan
+    </button>
+    <button class="nav-item" id="nav-history" onclick="showScreen('history')">
+      <span class="icon">📋</span>History
+    </button>
+    <button class="nav-item" id="nav-tokens" onclick="showScreen('tokens')">
+      <span class="icon">🪙</span>Tokens
+    </button>
+    <button class="nav-item" id="nav-admin" onclick="showScreen('admin')" style="display:none">
+      <span class="icon">⚙️</span>Admin
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const API_BASE = window.location.origin;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+let authToken   = null;
+let scanner     = null;
+let scannerActive = false;
+let currentAdminTab = 'attendance';
+
+// ── Persisted session ──────────────────────────────────────────────────────
+function saveSession(user, token) {
+  try {
+    sessionStorage.setItem('mess_user', JSON.stringify(user));
+    sessionStorage.setItem('mess_token', token);
+  } catch {}
+}
+function loadSession() {
+  try {
+    const u = sessionStorage.getItem('mess_user');
+    const t = sessionStorage.getItem('mess_token');
+    if (u && t) { currentUser = JSON.parse(u); authToken = t; return true; }
+  } catch {}
+  return false;
+}
+function clearSession() {
+  try { sessionStorage.removeItem('mess_user'); sessionStorage.removeItem('mess_token'); } catch {}
+}
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function api(method, path, body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (authToken) opts.headers['Authorization'] = `Bearer ${authToken}`;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_BASE + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Request failed');
+  return data;
+}
+
+// ── Alert helper ───────────────────────────────────────────────────────────
+function showAlert(containerId, type, msg) {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type}"><span class="icon">${icons[type]}</span><span>${msg}</span></div>`;
+}
+function clearAlert(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+
+// ── Screen navigation ──────────────────────────────────────────────────────
+const screenTitles = {
+  scan: '📷 Scan QR Code',
+  history: '📋 My Attendance',
+  tokens: '🪙 My Tokens',
+  admin: '⚙️ Admin Panel',
+  profile: '👤 Profile',
+};
+
+function showScreen(name) {
+  // Stop scanner if leaving scan screen
+  if (name !== 'scan' && scannerActive) stopScanner();
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${name}`)?.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById(`nav-${name}`)?.classList.add('active');
+
+  const titleEl = document.getElementById('app-bar-title');
+  if (titleEl) titleEl.textContent = screenTitles[name] || 'Mess Attendance';
+
+  // Lazy-load data for screens
+  if (name === 'history') loadHistory();
+  if (name === 'tokens')  loadTokens();
+  if (name === 'admin')   loadAdminData();
+  if (name === 'scan')    updateMealBanner();
+  if (name === 'profile') updateProfileScreen();
+}
+
+// ── Auth tab switch ────────────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+  });
+  document.getElementById('auth-login').classList.toggle('active', tab === 'login');
+  document.getElementById('auth-register').classList.toggle('active', tab === 'register');
+}
+
+// ── Auth handlers ──────────────────────────────────────────────────────────
+async function handleLogin() {
+  clearAlert('login-alert');
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showAlert('login-alert', 'error', 'Please fill in all fields.'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Logging in...';
+
+  try {
+    const data = await api('POST', '/auth/login', { email, password });
+    authToken   = data.token;
+    currentUser = data.user;
+    saveSession(currentUser, authToken);
+    onLoginSuccess();
+  } catch (err) {
+    showAlert('login-alert', 'error', err.message);
+    btn.disabled = false;
+    btn.textContent = 'Login';
+  }
+}
+
+async function handleRegister() {
+  clearAlert('register-alert');
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const adminPW  = document.getElementById('reg-admin').value;
+
+  if (!name || !email || !password) { showAlert('register-alert', 'error', 'Please fill in all required fields.'); return; }
+
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+  try {
+    const body = { name, email, password };
+    if (adminPW) body.admin_passcode = adminPW;
+    const data = await api('POST', '/auth/register', body);
+    authToken   = data.token;
+    currentUser = data.user;
+    saveSession(currentUser, authToken);
+    onLoginSuccess();
+  } catch (err) {
+    showAlert('register-alert', 'error', err.message);
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+function onLoginSuccess() {
+  document.getElementById('screen-auth').classList.remove('active');
+  document.getElementById('main-app-bar').style.display = 'flex';
+  document.getElementById('bottom-nav').style.display   = 'flex';
+  if (currentUser.is_admin) document.getElementById('nav-admin').style.display = 'flex';
+  showScreen('scan');
+}
+
+function handleLogout() {
+  if (!confirm('Sign out of your account?')) return;
+  stopScanner();
+  clearSession();
+  currentUser = null; authToken = null;
+  document.getElementById('main-app-bar').style.display = 'none';
+  document.getElementById('bottom-nav').style.display   = 'none';
+  document.getElementById('screen-auth').classList.add('active');
+  document.querySelectorAll('.screen:not(#screen-auth)').forEach(s => s.classList.remove('active'));
+  // Reset auth form
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+  clearAlert('login-alert');
+  switchAuthTab('login');
+}
+
+// ── Meal banner ─────────────────────────────────────────────────────────────
+function getMealWindow() {
+  const now = new Date();
+  const h = now.getHours();
+  if (h >= 6  && h < 10) return 'Breakfast';
+  if (h >= 12 && h < 15) return 'Lunch';
+  if (h >= 19 && h < 22) return 'Dinner';
+  return null;
+}
+
+function updateMealBanner() {
+  const meal = getMealWindow();
+  const banner = document.getElementById('meal-banner');
+  if (!banner) return;
+  if (meal) {
+    banner.className = 'meal-banner active';
+    banner.textContent = `🟢 Active Window: ${meal}`;
+  } else {
+    banner.className = 'meal-banner inactive';
+    banner.textContent = '⏸️ No active meal window right now';
+  }
+}
+
+// ── QR Scanner ─────────────────────────────────────────────────────────────
+function startScanner() {
+  const startBtn = document.getElementById('start-scan-btn');
+  const stopBtn  = document.getElementById('stop-scan-btn');
+  const errEl    = document.getElementById('scan-error');
+
+  clearAlert('scan-error');
+  startBtn.style.display = 'none';
+  stopBtn.style.display  = 'flex';
+  errEl.style.display    = 'none';
+
+  // Reset result area
+  document.getElementById('scan-result-area').style.display = 'none';
+  document.getElementById('scan-result-area').innerHTML = '';
+
+  scanner = new Html5Qrcode('qr-reader');
+  scannerActive = true;
+
+  Html5Qrcode.getCameras().then(cameras => {
+    if (!cameras || cameras.length === 0) {
+      showScanError('No camera found on this device.');
+      resetScannerUI();
+      return;
+    }
+    // Prefer back camera
+    const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
+    scanner.start(
+      cam.id,
+      { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+      onQRScanSuccess,
+      () => {}  // error callback (per-frame, suppress)
+    ).catch(err => {
+      showScanError('Camera access denied. Please allow camera permission and retry.');
+      resetScannerUI();
+    });
+  }).catch(() => {
+    showScanError('Unable to access camera. Ensure you are using HTTPS.');
+    resetScannerUI();
+  });
+}
+
+function stopScanner() {
+  if (scanner && scannerActive) {
+    scanner.stop().catch(() => {});
+    scannerActive = false;
+  }
+  resetScannerUI();
+}
+
+function resetScannerUI() {
+  scannerActive = false;
+  document.getElementById('start-scan-btn').style.display = 'flex';
+  document.getElementById('stop-scan-btn').style.display  = 'none';
+  // Clear reader content
+  const reader = document.getElementById('qr-reader');
+  if (reader) reader.innerHTML = '';
+}
+
+function showScanError(msg) {
+  const el = document.getElementById('scan-error');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="alert alert-error mt-3"><span class="icon">❌</span>${msg}</div>`;
+}
+
+async function onQRScanSuccess(decodedText) {
+  if (!scannerActive) return;
+  stopScanner();
+
+  // Show loading result
+  const resultArea = document.getElementById('scan-result-area');
+  resultArea.style.display = 'block';
+  resultArea.innerHTML = `
+    <div class="card text-center" style="padding:32px">
+      <div class="spinner spinner-dark" style="width:36px;height:36px;margin:0 auto 16px"></div>
+      <p>Validating scan...</p>
+    </div>`;
+
+  try {
+    let body = { qr_payload: decodedText };
+
+    // GPS if needed
+    const gpsEnabled = await checkIfGPSRequired();
+    if (gpsEnabled) {
+      try {
+        const pos = await getPosition();
+        body.latitude  = pos.coords.latitude;
+        body.longitude = pos.coords.longitude;
+      } catch {
+        resultArea.innerHTML = buildScanResultHTML('error', '📍', 'Location Required',
+          'Please allow location access and try again.', null, null);
+        addScanAgainButton(resultArea);
+        return;
+      }
+    }
+
+    const data = await api('POST', '/scan', body);
+    resultArea.innerHTML = buildScanResultHTML(
+      'success', '✅',
+      `${data.meal_type.charAt(0).toUpperCase() + data.meal_type.slice(1)} Recorded!`,
+      data.message,
+      data.user_name,
+      data.tokens_remaining
+    );
+    // Update in-memory token count
+    if (currentUser) { currentUser.tokens_remaining = data.tokens_remaining; saveSession(currentUser, authToken); }
+    addScanAgainButton(resultArea);
+
+  } catch (err) {
+    resultArea.innerHTML = buildScanResultHTML('error', '❌', 'Scan Failed', err.message, null, null);
+    addScanAgainButton(resultArea);
+  }
+}
+
+function buildScanResultHTML(type, icon, title, message, userName, tokens) {
+  const extra = (type === 'success' && tokens !== null)
+    ? `<div class="token-badge">🪙 ${tokens} token${tokens !== 1 ? 's' : ''} remaining</div>`
+    : '';
+  const nameLine = userName ? `<p style="margin-top:4px;font-weight:700">${userName}</p>` : '';
+  return `
+    <div class="scan-result ${type}">
+      <div class="big-icon">${icon}</div>
+      <h2>${title}</h2>
+      ${nameLine}
+      <p>${message}</p>
+      ${extra}
+    </div>`;
+}
+
+function addScanAgainButton(container) {
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-outline mt-3';
+  btn.textContent = '↩️ Scan Again';
+  btn.onclick = () => {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    updateMealBanner();
+  };
+  container.appendChild(btn);
+}
+
+async function checkIfGPSRequired() {
+  try {
+    const health = await api('GET', '/health');
+    return health.gps_enabled;
+  } catch { return false; }
+}
+
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+  });
+}
+
+// ── History ─────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const list  = document.getElementById('history-list');
+  const stats = document.getElementById('history-stats');
+  list.innerHTML  = '<div class="skeleton"></div><div class="skeleton mt-2"></div><div class="skeleton mt-2"></div>';
+
+  try {
+    const data = await api('GET', '/attendance/me');
+    const records = (data.records || []).reverse(); // newest first
+
+    // Stats
+    const counts = { breakfast: 0, lunch: 0, dinner: 0 };
+    records.forEach(r => { if (counts[r.meal_type] !== undefined) counts[r.meal_type]++; });
+    stats.innerHTML = Object.entries(counts).map(([meal, n]) => `
+      <div class="stat-card">
+        <div class="stat-num">${n}</div>
+        <div class="stat-lbl">${meal}</div>
+      </div>`).join('');
+
+    // List
+    if (records.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No attendance records yet.</p></div>`;
+      return;
+    }
+    list.innerHTML = records.map(r => `
+      <div class="record-item">
+        <div>
+          <span class="meal-chip ${r.meal_type}">${mealIcon(r.meal_type)} ${r.meal_type}</span>
+          <div class="record-date">${formatDate(r.date)} · ${formatTime(r.timestamp)}</div>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    list.innerHTML = `<div class="alert alert-error"><span class="icon">❌</span>${err.message}</div>`;
+  }
+}
+
+function mealIcon(m) { return m === 'breakfast' ? '🌅' : m === 'lunch' ? '☀️' : '🌙'; }
+function formatDate(d) { try { return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }); } catch { return d; } }
+function formatTime(ts) { try { return new Date(ts).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }); } catch { return ''; } }
+
+// ── Tokens ──────────────────────────────────────────────────────────────────
+async function loadTokens() {
+  document.getElementById('tok-count').textContent = '…';
+  try {
+    const data = await api('GET', '/tokens/me');
+    document.getElementById('tok-count').textContent = data.tokens_remaining;
+    document.getElementById('tok-plan').textContent  = data.plan || 'pay-as-you-go';
+    if (currentUser) { currentUser.tokens_remaining = data.tokens_remaining; saveSession(currentUser, authToken); }
+  } catch (err) {
+    document.getElementById('tok-count').textContent = '?';
+    document.getElementById('tok-plan').textContent  = 'Error loading';
+  }
+}
+
+// ── Profile ─────────────────────────────────────────────────────────────────
+function updateProfileScreen() {
+  if (!currentUser) return;
+  document.getElementById('profile-name').textContent   = currentUser.name  || '—';
+  document.getElementById('profile-email').textContent  = currentUser.email || '—';
+  document.getElementById('profile-tokens').textContent = currentUser.tokens_remaining ?? '—';
+  document.getElementById('profile-plan').textContent   = currentUser.plan  || 'pay-as-you-go';
+  if (currentUser.is_admin) document.getElementById('profile-admin-badge').style.display = 'inline-block';
+}
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+function switchAdminTab(tab) {
+  currentAdminTab = tab;
+  document.querySelectorAll('.admin-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().startsWith(tab));
+  });
+  const filters = document.getElementById('admin-attend-filters');
+  if (filters) filters.style.display = tab === 'attendance' ? 'flex' : 'none';
+  loadAdminData();
+}
+
+async function loadAdminData() {
+  if (currentAdminTab === 'attendance') loadAdminAttendance();
+  else if (currentAdminTab === 'users') loadAdminUsers();
+  else if (currentAdminTab === 'audit') loadAdminAudit();
+}
+
+async function loadAdminAttendance() {
+  const area = document.getElementById('admin-table-area');
+  area.innerHTML = '<div class="skeleton"></div><div class="skeleton mt-2"></div>';
+  const from = document.getElementById('filter-from')?.value || '';
+  const to   = document.getElementById('filter-to')?.value   || '';
+  try {
+    let url = '/admin/attendance';
+    const params = [];
+    if (from) params.push(`from_date=${from}`);
+    if (to)   params.push(`to_date=${to}`);
+    if (params.length) url += '?' + params.join('&');
+    const data = await api('GET', url);
+    const records = data.records || [];
+    if (!records.length) { area.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No records found.</p></div>'; return; }
+    area.innerHTML = `
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Time</th><th>Name</th><th>Meal</th></tr></thead>
+          <tbody>
+            ${records.map(r => `
+              <tr>
+                <td>${r.date}</td>
+                <td>${formatTime(r.timestamp)}</td>
+                <td>${r.user_name}</td>
+                <td><span class="meal-chip ${r.meal_type}">${mealIcon(r.meal_type)} ${r.meal_type}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted mt-2" style="text-align:right">${records.length} records</p>`;
+  } catch (err) {
+    area.innerHTML = `<div class="alert alert-error"><span class="icon">❌</span>${err.message}</div>`;
+  }
+}
+
+async function loadAdminUsers() {
+  const area = document.getElementById('admin-table-area');
+  area.innerHTML = '<div class="skeleton"></div><div class="skeleton mt-2"></div>';
+  try {
+    const data = await api('GET', '/admin/users');
+    const users = data.users || [];
+    if (!users.length) { area.innerHTML = '<div class="empty-state"><div class="icon">👥</div><p>No users found.</p></div>'; return; }
+    area.innerHTML = `
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Tokens</th><th>Plan</th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td>${u.name}${u.is_admin === 'True' ? ' <span class="badge-admin">ADMIN</span>' : ''}</td>
+                <td style="font-size:.78rem">${u.email}</td>
+                <td><strong>${u.tokens_remaining || 0}</strong></td>
+                <td>${u.plan || '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted mt-2" style="text-align:right">${users.length} users</p>`;
+  } catch (err) {
+    area.innerHTML = `<div class="alert alert-error"><span class="icon">❌</span>${err.message}</div>`;
+  }
+}
+
+async function loadAdminAudit() {
+  const area = document.getElementById('admin-table-area');
+  area.innerHTML = '<div class="skeleton"></div><div class="skeleton mt-2"></div>';
+  try {
+    const data = await api('GET', '/admin/audit');
+    const records = (data.records || []).reverse();
+    if (!records.length) { area.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>No audit records.</p></div>'; return; }
+    area.innerHTML = `
+      <div class="admin-table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>User ID</th><th>Action</th></tr></thead>
+          <tbody>
+            ${records.slice(0, 200).map(r => `
+              <tr>
+                <td style="font-size:.78rem;white-space:nowrap">${formatTime(r.timestamp)}<br><span style="color:var(--text-muted)">${formatDate(r.timestamp.split('T')[0])}</span></td>
+                <td style="font-size:.72rem;word-break:break-all">${r.user_id?.slice(0, 8)}…</td>
+                <td><code style="font-size:.75rem;background:#f1f5f9;padding:2px 6px;border-radius:4px">${r.action}</code></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch (err) {
+    area.innerHTML = `<div class="alert alert-error"><span class="icon">❌</span>${err.message}</div>`;
+  }
+}
+
+async function handleTopup() {
+  clearAlert('topup-alert');
+  const email  = document.getElementById('topup-email').value.trim();
+  const tokens = parseInt(document.getElementById('topup-tokens').value, 10);
+  const plan   = document.getElementById('topup-plan').value;
+
+  if (!email)      { showAlert('topup-alert', 'error', 'Please enter a student email.'); return; }
+  if (!tokens || tokens < 1) { showAlert('topup-alert', 'error', 'Please enter a valid token amount.'); return; }
+
+  const btn = document.getElementById('topup-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Processing...';
+
+  try {
+    const body = { email, tokens };
+    if (plan) body.plan = plan;
+    const data = await api('POST', '/admin/topup', body);
+    showAlert('topup-alert', 'success', `✅ ${data.message} New balance: ${data.new_balance} tokens.`);
+    document.getElementById('topup-email').value  = '';
+    document.getElementById('topup-tokens').value = '';
+    document.getElementById('topup-plan').value   = '';
+    if (currentAdminTab === 'users') loadAdminUsers();
+  } catch (err) {
+    showAlert('topup-alert', 'error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add Tokens';
+  }
+}
+
+// ── Enter key support ────────────────────────────────────────────────────────
+document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+document.getElementById('reg-admin').addEventListener('keydown', e => { if (e.key === 'Enter') handleRegister(); });
+
+// ── Service Worker registration ───────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+  });
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+(function boot() {
+  if (loadSession()) {
+    onLoginSuccess();
+  }
+  // Refresh meal banner every minute
+  setInterval(updateMealBanner, 60_000);
+})();
+</script>
+</body>
+</html>
