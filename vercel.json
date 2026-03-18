@@ -1,7 +1,7 @@
 {
   "builds": [
     {
-      "src": "backend/main.py",
+      "src": "main.py",
       "use": "@vercel/python"
     },
     {
@@ -16,7 +16,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/backend/main.py"
+      "dest": "/main.py"
     }
   ]
 }
